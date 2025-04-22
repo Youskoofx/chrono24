@@ -50,14 +50,11 @@ const Dashboard = () => {
     fetchData();
 
     // Mettre en place un écouteur pour les mises à jour en temps réel
-    const subscription = pneuService.supabase
-      .channel("public:pneus")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "pneus" },
-        fetchData,
-      )
-      .subscribe();
+    const subscription = pneuService.subscribeToChanges(
+      "public:pneus",
+      "pneus",
+      fetchData,
+    );
 
     return () => {
       subscription.unsubscribe();

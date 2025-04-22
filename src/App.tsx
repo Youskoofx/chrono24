@@ -19,9 +19,12 @@ function App() {
         </div>
       }
     >
-      <div className="min-h-screen bg-black text-white flex flex-col">
+      <div className="min-h-screen bg-black text-white flex flex-col relative overflow-hidden">
+        {/* Racing-themed background pattern */}
+        <div className="absolute inset-0 bg-[radial-gradient(#222_1px,transparent_1px)] bg-[size:20px_20px] opacity-20 z-0 pointer-events-none" />
+
         <Navbar />
-        <main className="flex-grow">
+        <main className="flex-grow relative z-10">
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/stock" element={<Stock />} />
@@ -32,7 +35,7 @@ function App() {
           </Routes>
           {import.meta.env.VITE_TEMPO === "true" && useRoutes(routes)}
         </main>
-        <footer className="py-4 px-6 border-t border-zinc-800 text-center text-sm text-gray-400">
+        <footer className="py-4 px-6 border-t border-zinc-800 text-center text-sm text-gray-400 relative z-10">
           © Chrono Pneus – Tous droits réservés – 2025
         </footer>
       </div>

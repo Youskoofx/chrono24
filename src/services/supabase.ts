@@ -4,7 +4,14 @@ import type { Database } from "../types/supabase";
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+// Create client only if environment variables are available
+export const supabase =
+  supabaseUrl && supabaseAnonKey
+    ? createClient<Database>(supabaseUrl, supabaseAnonKey)
+    : createClient<Database>(
+        "https://placeholder-url.supabase.co",
+        "placeholder-key",
+      );
 
 // Types pour les tables
 export type Pneu = {
@@ -29,6 +36,24 @@ export type HistoriqueItem = {
 
 // Service pour les pneus
 export const pneuService = {
+  // Référence à supabase pour l'utilisation dans les composants
+  supabase,
+
+  // S'abonner aux changements d'une table
+  subscribeToChanges(
+    channelName: string,
+    tableName: string,
+    callback: () => void,
+  ) {
+    const channel = supabase.channel(channelName);
+    return channel
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: tableName },
+        callback,
+      )
+      .subscribe();
+  },
   // Récupérer tous les pneus
   async getAllPneus() {
     const { data, error } = await supabase
