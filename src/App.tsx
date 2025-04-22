@@ -25,15 +25,23 @@ function App() {
 
         <Navbar />
         <main className="flex-grow relative z-10">
+          {/* For the tempo routes */}
+          {import.meta.env.VITE_TEMPO === "true" && useRoutes(routes)}
+
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/stock" element={<Stock />} />
             <Route path="/add-tire" element={<AddTire />} />
             <Route path="/history" element={<History />} />
+
+            {/* Allow tempo routes to be captured before the catchall */}
+            {import.meta.env.VITE_TEMPO === "true" && (
+              <Route path="/tempobook/*" />
+            )}
+
             {/* Fallback route - redirect to home */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-          {import.meta.env.VITE_TEMPO === "true" && useRoutes(routes)}
         </main>
         <footer className="py-4 px-6 border-t border-zinc-800 text-center text-sm text-gray-400 relative z-10">
           © Chrono Pneus – Tous droits réservés – 2025

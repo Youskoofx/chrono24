@@ -50,14 +50,24 @@ const Dashboard = () => {
     fetchData();
 
     // Mettre en place un écouteur pour les mises à jour en temps réel
-    const subscription = pneuService.subscribeToChanges(
-      "public:pneus",
-      "pneus",
-      fetchData,
-    );
+    let subscription = { unsubscribe: () => {} };
+
+    try {
+      subscription = pneuService.subscribeToChanges(
+        "public:pneus",
+        "pneus",
+        fetchData,
+      );
+    } catch (err) {
+      console.error("Erreur lors de l'abonnement aux changements:", err);
+    }
 
     return () => {
-      subscription.unsubscribe();
+      try {
+        subscription.unsubscribe();
+      } catch (err) {
+        console.error("Erreur lors du désabonnement:", err);
+      }
     };
   }, []);
 

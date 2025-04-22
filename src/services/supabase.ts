@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, RealtimeChannel } from "@supabase/supabase-js";
 import type { Database } from "../types/supabase";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
@@ -34,6 +34,23 @@ export type HistoriqueItem = {
   date_action?: string;
 };
 
+// Ensure supabase client has channel method
+if (!supabase.channel) {
+  // Mock implementation for environments where channel is not available
+  supabase.channel = (name: string): any => {
+    console.warn(
+      "Supabase realtime channel not available, using mock implementation",
+    );
+    return {
+      on: () => ({
+        subscribe: () => ({
+          unsubscribe: () => console.log("Mock unsubscribe called"),
+        }),
+      }),
+    };
+  };
+}
+
 // Service pour les pneus
 export const pneuService = {
   // Référence à supabase pour l'utilisation dans les composants
@@ -44,15 +61,23 @@ export const pneuService = {
     channelName: string,
     tableName: string,
     callback: () => void,
-  ) {
-    const channel = supabase.channel(channelName);
-    return channel
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: tableName },
-        callback,
-      )
-      .subscribe();
+  ): { unsubscribe: () => void } {
+    try {
+      const channel = supabase.channel(channelName);
+      return channel
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: tableName },
+          callback,
+        )
+        .subscribe();
+    } catch (error) {
+      console.error("Erreur lors de l'abonnement aux changements:", error);
+      // Return a dummy subscription object
+      return {
+        unsubscribe: () => console.log("Dummy unsubscribe called"),
+      };
+    }
   },
   // Récupérer tous les pneus
   async getAllPneus() {
