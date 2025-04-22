@@ -42,11 +42,17 @@ if (!supabase.channel) {
       "Supabase realtime channel not available, using mock implementation",
     );
     return {
-      on: () => ({
-        subscribe: () => ({
-          unsubscribe: () => console.log("Mock unsubscribe called"),
-        }),
-      }),
+      on: (event: string, filter: any, callback: () => void) => {
+        console.log(`Mock channel on ${event} called`);
+        return {
+          subscribe: () => {
+            console.log(`Mock channel subscribe called`);
+            return {
+              unsubscribe: () => console.log("Mock unsubscribe called"),
+            };
+          },
+        };
+      },
     };
   };
 }
@@ -198,6 +204,33 @@ export const pneuService = {
 
 // Service pour l'historique
 export const historiqueService = {
+  // Référence à supabase pour l'utilisation dans les composants
+  supabase,
+
+  // S'abonner aux changements d'une table
+  subscribeToChanges(
+    channelName: string,
+    tableName: string,
+    callback: () => void,
+  ): { unsubscribe: () => void } {
+    try {
+      const channel = supabase.channel(channelName);
+      return channel
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: tableName },
+          callback,
+        )
+        .subscribe();
+    } catch (error) {
+      console.error("Erreur lors de l'abonnement aux changements:", error);
+      // Return a dummy subscription object
+      return {
+        unsubscribe: () => console.log("Dummy unsubscribe called"),
+      };
+    }
+  },
+
   // Récupérer tout l'historique
   async getAllHistorique() {
     const { data, error } = await supabase

@@ -1,6 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Search, Filter, Edit, Trash2, AlertTriangle } from "lucide-react";
+import {
+  Search,
+  Filter,
+  Edit,
+  Trash2,
+  AlertTriangle,
+  Plus,
+  Minus,
+  ShoppingCart,
+} from "lucide-react";
 import {
   Table,
   TableBody,
@@ -26,15 +35,18 @@ import {
   DialogTitle,
   DialogFooter,
 } from "./ui/dialog";
-import { pneuService, Pneu } from "../services/supabase";
+import { pneuService, Pneu, historiqueService } from "../services/supabase";
+import { sendSms } from "../lib/notify";
 import Loader from "./Loader";
 import TireForm from "./TireForm";
+import { useNavigate } from "react-router-dom";
 
 const Stock = () => {
   const [pneus, setPneus] = useState<Pneu[]>([]);
   const [filteredPneus, setFilteredPneus] = useState<Pneu[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   // Filtres
   const [marqueFilter, setMarqueFilter] = useState("");
@@ -69,14 +81,11 @@ const Stock = () => {
     fetchPneus();
 
     // Mettre en place un écouteur pour les mises à jour en temps réel
-    const subscription = pneuService.supabase
-      .channel("public:pneus")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "pneus" },
-        fetchPneus,
-      )
-      .subscribe();
+    const subscription = pneuService.subscribeToChanges(
+      "public:pneus",
+      "pneus",
+      fetchPneus,
+    );
 
     return () => {
       subscription.unsubscribe();
@@ -88,8 +97,11 @@ const Stock = () => {
     let result = pneus;
 
     if (marqueFilter) {
-      result = result.filter((pneu) =>
-        pneu.marque.toLowerCase().includes(marqueFilter.toLowerCase()),
+      result = result.filter(
+        (pneu) =>
+          pneu.marque.toLowerCase().includes(marqueFilter.toLowerCase()) ||
+          (pneu.reference &&
+            pneu.reference.toLowerCase().includes(marqueFilter.toLowerCase())),
       );
     }
 
@@ -146,6 +158,34 @@ const Stock = () => {
       console.error("Erreur lors de la mise à jour:", err);
       setError(
         "Impossible de mettre à jour le pneu. Veuillez réessayer plus tard.",
+      );
+    }
+  };
+
+  // Ajuster la quantité d'un pneu (+/- n)
+  const adjustQuantity = async (pneu: Pneu, delta: number) => {
+    if (!pneu.id) return;
+    if (pneu.quantite + delta < 0) return; // Empêcher les quantités négatives
+
+    try {
+      const newQuantite = pneu.quantite + delta;
+      await pneuService.updatePneu(pneu.id, { quantite: newQuantite });
+
+      // Ajouter une entrée dans l'historique
+      await historiqueService.addHistorique({
+        type_action: "modification",
+        marque: pneu.marque,
+        etat: pneu.etat,
+      });
+
+      // Envoyer un SMS si on ajoute du stock
+      if (delta > 0 && pneu.reference) {
+        await sendSms(pneu.reference);
+      }
+    } catch (err) {
+      console.error("Erreur lors de l'ajustement de la quantité:", err);
+      setError(
+        "Impossible d'ajuster la quantité. Veuillez réessayer plus tard.",
       );
     }
   };
@@ -232,12 +272,12 @@ const Stock = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-300">
-                Marque
+                Marque ou Référence
               </label>
               <div className="relative">
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
                 <Input
-                  placeholder="Rechercher une marque..."
+                  placeholder="Rechercher une marque ou référence..."
                   value={marqueFilter}
                   onChange={(e) => setMarqueFilter(e.target.value)}
                   className="pl-10 bg-zinc-800 border-zinc-700"
@@ -276,6 +316,63 @@ const Stock = () => {
               </Select>
             </div>
           </div>
+        </motion.div>
+
+        {/* Alertes stock faible */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 mb-6"
+        >
+          <h2 className="text-xl font-bold flex items-center mb-4">
+            <AlertTriangle className="mr-2 h-5 w-5 text-yellow-500" />
+            Alertes stock faible (≤ 5)
+          </h2>
+
+          {pneus.filter((p) => p.quantite <= 5).length === 0 ? (
+            <p className="text-gray-400">Aucune alerte de stock faible</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {pneus
+                .filter((p) => p.quantite <= 5)
+                .map((pneu) => (
+                  <div
+                    key={pneu.id}
+                    className="bg-zinc-800 border border-zinc-700 rounded-lg p-3 flex justify-between items-center"
+                  >
+                    <div>
+                      <p className="font-medium">{pneu.marque}</p>
+                      <p className="text-sm text-gray-400">
+                        {pneu.dimensions} - {pneu.reference || "Sans réf."}
+                      </p>
+                      <p className="text-sm font-bold text-red-400">
+                        Quantité: {pneu.quantite}
+                      </p>
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 w-8 p-0 border-green-700 bg-green-900/20"
+                        onClick={() => adjustQuantity(pneu, 1)}
+                      >
+                        <Plus className="h-4 w-4 text-green-400" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 w-8 p-0 border-red-700 bg-red-900/20"
+                        onClick={() => adjustQuantity(pneu, -1)}
+                        disabled={pneu.quantite <= 0}
+                      >
+                        <Minus className="h-4 w-4 text-red-400" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
         </motion.div>
 
         {/* Tableau de stock */}
@@ -322,12 +419,35 @@ const Stock = () => {
                           {pneu.etat}
                         </span>
                       </TableCell>
-                      <TableCell
-                        className={
-                          pneu.quantite <= 5 ? "text-red-500 font-bold" : ""
-                        }
-                      >
-                        {pneu.quantite}
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <span
+                            className={
+                              pneu.quantite <= 5 ? "text-red-500 font-bold" : ""
+                            }
+                          >
+                            {pneu.quantite}
+                          </span>
+                          <div className="flex space-x-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0 text-green-500 hover:text-green-400 hover:bg-green-900/20"
+                              onClick={() => adjustQuantity(pneu, 1)}
+                            >
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0 text-red-500 hover:text-red-400 hover:bg-red-900/20"
+                              onClick={() => adjustQuantity(pneu, -1)}
+                              disabled={pneu.quantite <= 0}
+                            >
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
                       </TableCell>
                       <TableCell className="text-gray-400">
                         {pneu.reference || "-"}
@@ -427,6 +547,14 @@ const Stock = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Bouton d'ajout flottant */}
+        <Button
+          onClick={() => navigate("/add-tire")}
+          className="fixed bottom-6 right-6 rounded-full w-14 h-14 bg-yellow-500 hover:bg-yellow-600 text-black shadow-lg"
+        >
+          <Plus className="h-6 w-6" />
+        </Button>
       </div>
     </div>
   );

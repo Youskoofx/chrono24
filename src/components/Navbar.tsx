@@ -49,7 +49,6 @@ const Navbar = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
             <Logo />
-            <span className="text-xl font-bold text-white">Chrono Pneus</span>
           </Link>
 
           {/* Navigation Links - Desktop */}
