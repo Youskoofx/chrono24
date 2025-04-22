@@ -1,0 +1,114 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 0%; /* Black */
+    --foreground: 0 0% 100%; /* White */
+
+    --card: 0 0% 7%; /* Dark gray for cards */
+    --card-foreground: 0 0% 100%; /* White text */
+
+    --popover: 0 0% 7%; /* Dark gray for popovers */
+    --popover-foreground: 0 0% 100%; /* White text */
+
+    --primary: 50 100% 50%; /* Yellow racing color */
+    --primary-foreground: 0 0% 0%; /* Black text on yellow */
+
+    --secondary: 240 5% 10%; /* Dark gray for secondary elements */
+    --secondary-foreground: 0 0% 100%; /* White text */
+
+    --muted: 240 5% 15%; /* Slightly lighter gray for muted elements */
+    --muted-foreground: 240 5% 65%; /* Light gray text */
+
+    --accent: 50 100% 50%; /* Yellow accent */
+    --accent-foreground: 0 0% 0%; /* Black text on accent */
+
+    --destructive: 0 100% 50%; /* Red for destructive actions */
+    --destructive-foreground: 0 0% 100%; /* White text */
+
+    --border: 240 5% 15%; /* Dark gray border */
+    --input: 240 5% 15%; /* Dark gray input */
+    --ring: 50 100% 50%; /* Yellow ring */
+
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Racing-themed scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #111;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: theme("colors.yellow.500");
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Racing checkerboard pattern */
+.checkerboard-pattern {
+  background-image: linear-gradient(45deg, #222 25%, transparent 25%),
+    linear-gradient(-45deg, #222 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #222 75%),
+    linear-gradient(-45deg, transparent 75%, #222 75%);
+  background-size: 20px 20px;
+  background-position:
+    0 0,
+    0 10px,
+    10px -10px,
+    -10px 0px;
+  opacity: 0.05;
+}
+
+/* Racing stripe */
+.racing-stripe {
+  position: relative;
+}
+
+.racing-stripe::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background-color: theme("colors.yellow.500");
+}
+
+/* Button hover effects */
+.btn-racing {
+  transition: all 0.2s ease;
+}
+
+.btn-racing:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 204, 0, 0.3);
+}
+
+.btn-racing:active {
+  transform: translateY(0);
+}
